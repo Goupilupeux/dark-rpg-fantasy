@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dark Fantasy RPG</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Georgia, serif; background: #0f0f0f; color: #e5ddd0; line-height: 1.6; }
+    .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+    header { background: linear-gradient(135deg, #8b0000 0%, #0f0f0f 100%); padding: 20px; border-bottom: 2px solid #d4af37; margin-bottom: 20px; border-radius: 5px; }
+    h1 { color: #d4af37; text-shadow: 0 0 10px rgba(212, 175, 55, 0.5); margin-bottom: 10px; }
+    p { color: #a0a0a0; }
+    .chat-box { background: #1a1a1a; border: 1px solid #d4af37; padding: 15px; height: 400px; overflow-y: auto; margin-bottom: 15px; border-radius: 5px; }
+    .message { margin-bottom: 12px; padding: 10px; border-left: 3px solid #d4af37; border-radius: 3px; }
+    .message.gm { color: #d4af37; background: rgba(212, 175, 55, 0.08); }
+    .message.player { color: #e5ddd0; background: rgba(139, 0, 0, 0.12); }
+    .message strong { display: block; margin-bottom: 5px; font-size: 0.9em; }
+    textarea { width: 100%; padding: 10px; margin-bottom: 10px; background: #1a1a1a; color: #e5ddd0; border: 1px solid #d4af37; border-radius: 3px; font-family: Georgia, serif; resize: vertical; min-height: 80px; }
+    .button-group { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+    button { background: #8b0000; color: #d4af37; border: 1px solid #d4af37; padding: 12px 18px; cursor: pointer; border-radius: 3px; font-family: Georgia, serif; font-weight: bold; transition: all 0.3s; flex: 1; min-width: 120px; }
+    button:hover { background: #d4af37; color: #0f0f0f; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .info { color: #a0a0a0; font-size: 0.9em; margin-top: 10px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎲 Loup des Ombres</h1>
+      <p>MJ IA - Dark Fantasy RPG Solo</p>
+    </header>
+    <div class="chat-box" id="chatBox"></div>
+    <textarea id="playerInput" placeholder="Decris ton action ou dialogue..."></textarea>
+    <div class="button-group">
+      <button onclick="sendAction()" id="sendBtn">📤 Envoyer</button>
+      <button onclick="toggleVoice()" id="voiceBtn">🎤 Dicter</button>
+      <button onclick="playLastMessage()" id="replayBtn" disabled>🔊 Rejouer</button>
+    </div>
+    <div class="info" id="statusInfo">Connexion au serveur...</div>
+  </div>
+  <script>
+    let currentAudio = null;
+    let lastMessage = null;
+    const sendBtn = document.getElementById('sendBtn');
+    const voiceBtn = document.getElementById('voiceBtn');
+    const replayBtn = document.getElementById('replayBtn');
+    const statusInfo = document.getElementById('statusInfo');
+
+    async function sendAction() {
+      const input = document.getElementById('playerInput');
+      const action = input.value.trim();
+      if (!action) return;
+      addMessage('player', 'Toi', action);
+      input.value = '';
+      sendBtn.disabled = true;
+      sendBtn.textContent = '⏳ Attente...';
+      statusInfo.textContent = 'Le MJ reflechit...';
+      try {
+        const res = await fetch('/api/game/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action })
+        });
+        const data = await res.json();
+        addMessage('gm', data.speakerName || 'MJ', data.narration);
+        lastMessage = data.narration;
+        replayBtn.disabled = false;
+        statusInfo.textContent = 'Pret pour la suite...';
+        await speak(data.narration, data.speakerName);
+      } catch (e) {
+        addMessage('gm', 'MJ', 'Erreur reseau. Verifie la connexion.');
+        statusInfo.textContent = 'Erreur de connexion';
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = '📤 Envoyer';
+      }
+    }
+
+    function addMessage(role, speaker, text) {
+      const box = document.getElementById('chatBox');
+      const msg = document.createElement('div');
+      msg.className = 'message ' + role;
+      msg.innerHTML = '<strong>' + speaker + '</strong>' + text;
+      box.appendChild(msg);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function speak(text, speaker) {
+      try {
+        const res = await fetch('/api/tts/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, speaker })
+        });
+        if (res.ok) {
+          const blob = await res.blob();
+          currentAudio = new Audio(URL.createObjectURL(blob));
+          currentAudio.play();
+        }
+      } catch (e) {
+        console.log('TTS indisponible');
+      }
+    }
+
+    function playLastMessage() {
+      if (currentAudio) {
+        currentAudio.currentTime = 0;
+        currentAudio.play();
+      }
+    }
+
+    function toggleVoice() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert('Reconnaissance vocale non supportee sur ce navigateur');
+        return;
+      }
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'fr-FR';
+      recognition.onstart = () => {
+        voiceBtn.textContent = '🎤 Ecoute...';
+        voiceBtn.disabled = true;
+      };
+      recognition.onresult = (
