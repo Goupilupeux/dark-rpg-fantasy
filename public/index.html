@@ -122,4 +122,34 @@
         voiceBtn.textContent = '🎤 Ecoute...';
         voiceBtn.disabled = true;
       };
-      recognition.onresult = (
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript + ' ';
+        }
+        document.getElementById('playerInput').value += transcript;
+      };
+      recognition.onend = () => {
+        voiceBtn.textContent = '🎤 Dicter';
+        voiceBtn.disabled = false;
+      };
+      recognition.onerror = () => {
+        voiceBtn.textContent = '🎤 Dicter';
+        voiceBtn.disabled = false;
+        alert('Erreur de reconnaissance vocale');
+      };
+      recognition.start();
+    }
+
+    fetch('/api/game/init', { method: 'POST' })
+      .then(() => {
+        addMessage('gm', 'MJ', 'Tu te reveilles dans une auberge enfumee. Cerbere leve la tete, ses yeux dores brillant dans la penombre. Un nouveau jour commence dans ce monde sombre...');
+        statusInfo.textContent = 'Pret a jouer!';
+      })
+      .catch(() => {
+        addMessage('gm', 'MJ', 'Impossible de se connecter au serveur.');
+        statusInfo.textContent = 'Erreur de connexion';
+      });
+  </script>
+</body>
+</html>
