@@ -12,7 +12,7 @@ JdR solo immersif avec IA (Poe + Claude 3.5 Sonnet) et voix française (ElevenLa
    - Start Command: `node index.js`
 5. Ajoute les variables d'environnement:
    - `POE_API_KEY` = ik4lxhJas0e4W8I5-5kCKeXRznyhoay53x5dllb_cRM
-   - `ELEVENLABS_API_KEY` = ta clé ElevenLabs
+   - `ELEVENLABS_API_KEY` = sk_f5b51bbe2c70e17caab42ab6de83d21843bde0a8fc09429c
    - `PORT` = 3001
 6. Deploy!
 
